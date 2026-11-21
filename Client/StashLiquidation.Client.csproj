@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GameManaged>$(SptRoot)/EscapeFromTarkov_Data/Managed</GameManaged>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/SaleProtocol.cs" Link="SaleProtocol.cs" />
+    <Reference Include="Assembly-CSharp;Comfort;Sirenix.Serialization;UnityEngine;UnityEngine.CoreModule">
+      <HintPath>$(GameManaged)/%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony;BepInEx">
+      <HintPath>$(SptRoot)/BepInEx/core/%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Tyfon.UIFixes">
+      <HintPath>$(SptRoot)/BepInEx/plugins/Tyfon.UIFixes.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

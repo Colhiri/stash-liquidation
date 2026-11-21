@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shared/SaleProtocol.cs" Link="SaleProtocol.cs" />
+    <Reference Include="SPTarkov.Common;SPTarkov.DI;SPTarkov.Server.Core;SemanticVersioning">
+      <HintPath>$(SptRoot)/SPT/%(Identity).dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>
