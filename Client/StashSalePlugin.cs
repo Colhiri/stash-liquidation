@@ -10,7 +10,7 @@ using UnityEngine;
 
 namespace StashLiquidation;
 
-[BepInPlugin("local.tarkov.stashliquidation", "Stash Liquidation", "1.1.4")]
+[BepInPlugin("com.colhirux.stashliquidation", "ColhiruX-StashLiquidation", "1.1.5")]
 [BepInProcess("EscapeFromTarkov.exe")]
 [BepInDependency("com.SPT.core")]
 [BepInDependency("Tyfon.UIFixes", "5.3.9")]
