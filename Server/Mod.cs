@@ -11,7 +11,7 @@ public record Metadata : AbstractModMetadata
     public override string ModGuid { get; init; } = "com.colhirux.stashliquidation";
     public override string Name { get; init; } = "StashLiquidation";
     public override string Author { get; init; } = "ColhiruX";
-    public override SemanticVersioning.Version Version { get; init; } = new("1.1.6");
+    public override SemanticVersioning.Version Version { get; init; } = new("1.1.7");
     public override SemanticVersioning.Range SptVersion { get; init; } = new("=4.0.13");
     public override string License { get; init; } = "MIT";
     public override List<string>? Contributors { get; init; }

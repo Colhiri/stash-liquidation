@@ -18,6 +18,9 @@ public record SaleRequest : BaseInteractionRequestData
 {
     [JsonPropertyName("items")]
     public string[]? Items { get; init; }
+
+    [JsonPropertyName("locale")]
+    public string? Locale { get; init; }
 }
 
 [Injectable(InjectionType.Scoped)]
@@ -30,8 +33,6 @@ public class SaleRouter(
     QuestHelper questHelper,
     TimeUtil time) : ItemEventRouterDefinition
 {
-    private static readonly CultureInfo Russian = CultureInfo.GetCultureInfo("ru-RU");
-
     protected override List<HandledRoute> GetHandledRoutes() => [new(SaleProtocol.Action, false)];
 
     protected override ValueTask<ItemEventRouterResponse> HandleItemEventInternal(
@@ -144,7 +145,9 @@ public class SaleRouter(
             }
 
             var changes = output.ProfileChanges[sessionId].Items!;
-            if (saleTotal > 0 && !SendPayout(sessionId, pmc, saleTotal, commission))
+            // Older clients omitted the locale and displayed Russian menu text.
+            bool russian = request.Locale is null or "ru";
+            if (saleTotal > 0 && !SendPayout(sessionId, pmc, saleTotal, commission, russian))
             {
                 return ValueTask.FromResult(output);
             }
@@ -313,7 +316,7 @@ public class SaleRouter(
         return true;
     }
 
-    private bool SendPayout(MongoId sessionId, PmcData pmc, long gross, long commission)
+    private bool SendPayout(MongoId sessionId, PmcData pmc, long gross, long commission, bool russian)
     {
         MongoId rubles = SaleProtocol.Rubles;
         if (itemHelper.GetItem(rubles).Value?.Properties?.StackMaxSize is not > 0)
@@ -328,8 +331,10 @@ public class SaleRouter(
             Template = rubles,
             Upd = new Upd { StackObjectsCount = payout }
         });
-        string message = $"Продажа из схрона. Сумма продажи: {gross.ToString("N0", Russian)} ₽. "
-            + $"Комиссия: {commission.ToString("N0", Russian)} ₽. К получению: {payout.ToString("N0", Russian)} ₽.";
+        var culture = CultureInfo.GetCultureInfo(russian ? "ru-RU" : "en-US");
+        string message = russian
+            ? string.Create(culture, $"Продажа из схрона. Сумма продажи: {gross:N0} ₽. Комиссия: {commission:N0} ₽. К получению: {payout:N0} ₽.")
+            : string.Create(culture, $"Stash sale. Sale total: {gross:N0} ₽. Flea fee: {commission:N0} ₽. To collect: {payout:N0} ₽.");
         int storageSeconds = time.GetHoursAsSeconds((int)questHelper.GetMailItemRedeemTimeHoursForProfile(pmc));
         mail.SendDirectNpcMessageToPlayer(sessionId, Traders.RAGMAN, MessageType.MessageWithItems,
             message, attachments, storageSeconds);
