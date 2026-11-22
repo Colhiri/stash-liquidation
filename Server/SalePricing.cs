@@ -1,35 +1,35 @@
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.Controllers;
 using SPTarkov.Server.Core.Extensions;
-using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.Helpers.Commerce;
+using SPTarkov.Server.Core.Helpers.Items;
+using SPTarkov.Server.Core.Helpers.Profile;
+using SPTarkov.Server.Core.Helpers.Ragfair;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Eft.Ragfair;
 using SPTarkov.Server.Core.Models.Enums;
 using SPTarkov.Server.Core.Models.Spt.Config;
-using SPTarkov.Server.Core.Servers;
-using SPTarkov.Server.Core.Services;
+using SPTarkov.Server.Core.Models.Spt.Tables;
+using SPTarkov.Server.Core.Services.Ragfair;
 
 namespace StashLiquidation;
 
-#pragma warning disable CS0618 // SPT 4.0.13 registers configuration through ConfigServer.
-[Injectable(InjectionType.Scoped)]
+[Injectable]
 public class SalePricing(
     RagfairController flea,
     RagfairOfferService offers,
     RagfairServerHelper fleaRules,
     PaymentHelper payment,
-    DatabaseService database,
+    GlobalTable globals,
+    TemplateTable templates,
     HandbookHelper handbook,
     ItemHelper itemHelper,
     PresetHelper presets,
     RagfairTaxService tax,
-    ConfigServer configs)
+    RagfairConfig fleaConfig)
 {
-    private readonly RagfairConfig fleaConfig = configs.GetConfig<RagfairConfig>();
-#pragma warning restore CS0618
-
     internal bool TryQuote(IReadOnlyList<Item> lot, PmcData quoteProfile, Dictionary<MongoId, double> prices,
         out long gross, out long fee)
     {
@@ -42,7 +42,7 @@ public class SalePricing(
             || properties.QuestItem == true || properties.IsUnsaleable == true
             || !fleaRules.IsItemValidRagfairItem(template)
             || lot.Skip(1).Any(item => itemHelper.GetItem(item.Template).Value?.Properties?.CanSellOnRagfair != true)
-            || (database.GetGlobals().Configuration.RagFair.IsOnlyFoundInRaidAllowed
+            || (globals.Configuration.RagFair.IsOnlyFoundInRaidAllowed
                 && part.Upd?.SpawnedInSession != true))
         {
             return false;
@@ -151,7 +151,7 @@ public class SalePricing(
         bool hasCashOffers = offers.GetOffersOfType(template)?.Any(offer => !offer.IsTraderOffer()
             && offer.Requirements is { } requirements
             && requirements.Any() && requirements.All(requirement => payment.IsMoneyTpl(requirement.TemplateId))) == true;
-        database.GetPrices().TryGetValue(template, out price);
+        templates.Prices.TryGetValue(template, out price);
         if (hasCashOffers)
         {
             double? average = flea.GetItemMinAvgMaxFleaPriceValues(new GetMarketPriceRequestData

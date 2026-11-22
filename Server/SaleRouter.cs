@@ -2,14 +2,18 @@ using System.Globalization;
 using System.Text.Json.Serialization;
 using SPTarkov.DI.Annotations;
 using SPTarkov.Server.Core.DI;
-using SPTarkov.Server.Core.Helpers;
+using SPTarkov.Server.Core.DI.Routing;
+using SPTarkov.Server.Core.Helpers.Items;
+using SPTarkov.Server.Core.Helpers.Profile;
+using SPTarkov.Server.Core.Helpers.Quest;
 using SPTarkov.Server.Core.Models.Common;
 using SPTarkov.Server.Core.Models.Eft.Common;
 using SPTarkov.Server.Core.Models.Eft.Common.Request;
 using SPTarkov.Server.Core.Models.Eft.Common.Tables;
 using SPTarkov.Server.Core.Models.Eft.ItemEvent;
 using SPTarkov.Server.Core.Models.Enums;
-using SPTarkov.Server.Core.Services;
+using SPTarkov.Server.Core.Models.Spt.Tables;
+using SPTarkov.Server.Core.Services.Commerce;
 using SPTarkov.Server.Core.Utils;
 
 namespace StashLiquidation;
@@ -23,42 +27,49 @@ public record SaleRequest : BaseInteractionRequestData
     public string? Locale { get; init; }
 }
 
-[Injectable(InjectionType.Scoped)]
-public class SaleRouter(
+[Injectable(TypePriority = OnLoadOrder.Routers)]
+public sealed class SaleRouter(StashSale sale) : ItemEventRouter([
+    new ItemRouteAction<SaleRequest>(SaleProtocol.Action,
+        (_, pmc, request, sessionId, output, cancellationToken) =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return ValueTask.FromResult(sale.Sell(pmc, request, sessionId, output));
+        })
+]);
+
+[Injectable]
+public sealed class StashSale(
     SalePricing pricing,
-    DatabaseService database,
+    TemplateTable templates,
     InventoryHelper inventoryHelper,
     ItemHelper itemHelper,
     MailSendService mail,
     QuestHelper questHelper,
-    TimeUtil time) : ItemEventRouterDefinition
+    TimeUtil time)
 {
-    protected override List<HandledRoute> GetHandledRoutes() => [new(SaleProtocol.Action, false)];
-
-    protected override ValueTask<ItemEventRouterResponse> HandleItemEventInternal(
-        string url, PmcData pmc, BaseInteractionRequestData body, MongoId sessionId, ItemEventRouterResponse output)
+    internal ItemEventRouterResponse Sell(PmcData pmc, SaleRequest request, MongoId sessionId, ItemEventRouterResponse output)
     {
-        if (body is not SaleRequest { Items.Length: > 0 } request || pmc.Inventory is not { } inventory)
+        if (request.Items is not { Length: > 0 } || pmc.Inventory is not { } inventory)
         {
-            return ValueTask.FromResult(output);
+            return output;
         }
 
         lock (inventory)
         {
             if (inventory.Items is not { } items || inventory.Stash is not { } stashId)
             {
-                return ValueTask.FromResult(output);
+                return output;
             }
 
-            var templates = database.GetItems();
+            var itemTemplates = templates.Items;
             var itemsById = items.ToDictionary(item => item.Id.ToString());
             var children = items.ToLookup(item => item.ParentId);
-            var protectedBranches = GetProtectedBranches(itemsById, templates);
+            var protectedBranches = GetProtectedBranches(itemsById, itemTemplates);
             string stash = stashId.ToString();
             var saleRoots = request.Items.OfType<string>().Distinct()
                 .Where(itemsById.ContainsKey).Select(id => itemsById[id])
                 .Where(root => IsIndependentStashSelection(root, stash, itemsById))
-                .SelectMany(root => GetSaleRoots(root, children, protectedBranches, templates))
+                .SelectMany(root => GetSaleRoots(root, children, protectedBranches, itemTemplates))
                 .DistinctBy(root => root.Id).ToArray();
             var saleRootIds = saleRoots.Select(root => root.Id.ToString()).ToHashSet();
             var plans = new List<Breakdown>();
@@ -141,7 +152,7 @@ public class SaleRouter(
 
             if (deletions.Count == 0)
             {
-                return ValueTask.FromResult(output);
+                return output;
             }
 
             var changes = output.ProfileChanges[sessionId].Items!;
@@ -149,7 +160,7 @@ public class SaleRouter(
             bool russian = request.Locale is null or "ru";
             if (saleTotal > 0 && !SendPayout(sessionId, pmc, saleTotal, commission, russian))
             {
-                return ValueTask.FromResult(output);
+                return output;
             }
 
             changes.DeletedItems!.AddRange(deletions);
@@ -158,7 +169,7 @@ public class SaleRouter(
             pmc.InsuredItems?.RemoveAll(item => item.ItemId is { } id && soldIds.Contains(id));
         }
 
-        return ValueTask.FromResult(output);
+        return output;
     }
 
     private bool IsSealedPackage(Item item) =>

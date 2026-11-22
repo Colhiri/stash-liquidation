@@ -6,16 +6,19 @@ A quick-sell mod for single-player SPT. Sell loot from the stash or from contain
 
 ## Compatibility
 
-- SPT **4.0.13** and Tarkov build **0.16.9.40087**
-- [UI Fixes 5.3.9](https://github.com/tyfon7/UIFixes/releases/tag/v5.3.9), installed separately
-- Starting with 1.1.7, the mod's menu, notifications and new receipts follow the game language. Russian uses Russian text. All other game languages use English.
+| SPT | Stash Liquidation | Required UI Fixes | Server folder |
+| --- | --- | --- | --- |
+| 4.1.6 (EFT 0.16.9.5.40743) | 1.2.0 | [6.0.4](https://github.com/tyfon7/UIFixes/releases/tag/v6.0.4) | `SPT_Runtime` |
+| 4.0.13 (EFT 0.16.9.40087) | [1.1.7](https://github.com/Colhiri/stash-liquidation/releases/tag/v1.1.7) | [5.3.9](https://github.com/tyfon7/UIFixes/releases/tag/v5.3.9) | `SPT` |
+
+Use the archive for your SPT version. The mod's menu, notifications and new receipts use Russian when the game is set to Russian and English for other languages.
 
 ## Installation
 
 1. Close the game and SPT server.
 2. Install the compatible version of UI Fixes.
-3. Download the ZIP from the [latest release](https://github.com/Colhiri/stash-liquidation/releases/latest).
-4. Extract the ZIP into the root of the SPT installation so its `BepInEx` and `SPT` folders merge with the existing folders.
+3. Download the ZIP for your SPT version from [Releases](https://github.com/Colhiri/stash-liquidation/releases).
+4. Extract the ZIP into the root of your SPT installation, alongside `EscapeFromTarkov.exe`. Merge `BepInEx` and the matching server folder with the existing folders.
 5. Start the SPT server and game.
 
 ## Usage
@@ -33,14 +36,14 @@ The game client sends the selected item IDs and the receipt language to its SPT 
 
 ## Build
 
-Use the .NET 9 SDK and a local SPT 4.0.13 installation with UI Fixes 5.3.9 installed. The build reads the game and mod references from that installation.
+Use the .NET 10 SDK and a local SPT 4.1.6 installation with UI Fixes 6.0.4 installed. The build reads the client assemblies patched by the SPT launcher from that installation. To build for SPT 4.0.13, use the [v1.1.7 source](https://github.com/Colhiri/stash-liquidation/tree/v1.1.7).
 
 ```powershell
-dotnet build Client/StashLiquidation.Client.csproj -c Release -p:SptRoot="D:/SPT"
-dotnet build Server/StashLiquidation.Server.csproj -c Release -p:SptRoot="D:/SPT"
+dotnet build Client/StashLiquidation.Client.csproj -c Release -p:SptRoot="D:/SPT-4.1.6"
+dotnet build Server/StashLiquidation.Server.csproj -c Release -p:SptRoot="D:/SPT-4.1.6"
 ```
 
-The client DLL goes in `BepInEx/plugins/StashLiquidation`. The server DLL goes in `SPT/user/mods/StashLiquidation`.
+The client DLL goes in `BepInEx/plugins/StashLiquidation`. The 4.1.6 server DLL goes in `SPT_Runtime/user/mods/StashLiquidation`, and the 4.0.13 server DLL goes in `SPT/user/mods/StashLiquidation`.
 
 To uninstall, close the game and server and remove those two `StashLiquidation` folders.
 

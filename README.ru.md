@@ -6,16 +6,19 @@
 
 ## Совместимость
 
-- SPT **4.0.13** и сборка игры **0.16.9.40087**.
-- [UI Fixes 5.3.9](https://github.com/tyfon7/UIFixes/releases/tag/v5.3.9) устанавливается отдельно.
-- Начиная с 1.1.7 меню мода, уведомления и новые письма следуют языку игры. При русском языке игры тексты будут на русском. При любом другом языке — на английском.
+| SPT | Stash Liquidation | Обязательная версия UI Fixes | Папка сервера |
+| --- | --- | --- | --- |
+| 4.1.6 (EFT 0.16.9.5.40743) | 1.2.0 | [6.0.4](https://github.com/tyfon7/UIFixes/releases/tag/v6.0.4) | `SPT_Runtime` |
+| 4.0.13 (EFT 0.16.9.40087) | [1.1.7](https://github.com/Colhiri/stash-liquidation/releases/tag/v1.1.7) | [5.3.9](https://github.com/tyfon7/UIFixes/releases/tag/v5.3.9) | `SPT` |
+
+Скачивайте архив для своей версии SPT. При русском языке игры меню мода, уведомления и новые письма будут на русском. При остальных языках игры используется английский.
 
 ## Установка
 
 1. Закройте игру и остановите сервер SPT.
-2. Установите UI Fixes 5.3.9.
-3. Скачайте ZIP с [последнего релиза](https://github.com/Colhiri/stash-liquidation/releases/latest).
-4. Распакуйте ZIP в корень SPT, где лежит `EscapeFromTarkov.exe`, и объедините папки `BepInEx` и `SPT` с существующими.
+2. Установите версию UI Fixes из таблицы.
+3. Скачайте ZIP для своей версии SPT из [раздела релизов](https://github.com/Colhiri/stash-liquidation/releases).
+4. Распакуйте ZIP в корень SPT с `EscapeFromTarkov.exe`. Объедините `BepInEx` и папку сервера из архива с существующими.
 5. Запустите сервер и игру.
 
 ## Продажа
@@ -35,6 +38,6 @@
 
 ## Удаление
 
-Закройте игру, остановите сервер и удалите папки `BepInEx/plugins/StashLiquidation` и `SPT/user/mods/StashLiquidation`.
+Закройте игру и остановите сервер. Удалите `BepInEx/plugins/StashLiquidation` и папку мода в `SPT_Runtime/user/mods` для 4.1.6 или в `SPT/user/mods` для 4.0.13.
 
 [Инструкция по сборке](README.md#build) · [Лицензия MIT](LICENSE)

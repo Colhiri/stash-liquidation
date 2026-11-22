@@ -2,18 +2,21 @@ using System;
 using System.Linq;
 using BepInEx;
 using Comfort.Common;
+using EFT;
+using EFT.Communications;
 using EFT.InventoryLogic;
 using EFT.UI;
+using EFT.UI.Ragfair;
 using HarmonyLib;
 using UIFixes;
 using UnityEngine;
 
 namespace StashLiquidation;
 
-[BepInPlugin("com.colhirux.stashliquidation", "ColhiruX-StashLiquidation", "1.1.7")]
+[BepInPlugin("com.colhirux.stashliquidation", "ColhiruX-StashLiquidation", "1.2.0")]
 [BepInProcess("EscapeFromTarkov.exe")]
 [BepInDependency("com.SPT.core")]
-[BepInDependency("Tyfon.UIFixes", "5.3.9")]
+[BepInDependency("com.tyfon.uifixes", "6.0.4")]
 public sealed class StashSalePlugin : BaseUnityPlugin
 {
     private void Awake()
@@ -34,14 +37,14 @@ internal static class SaleContextMenu
         __state = closeAction == null;
     }
 
-    private static void Postfix(ItemUiContext __instance, ItemContextAbstractClass itemContext, bool __state,
-        InventoryController ___inventoryController_0, ItemInfoInteractionsAbstractClass<EItemInfoButton> __result)
+    private static void Postfix(ItemUiContext __instance, ItemContext itemContext, bool __state,
+        InventoryController ____inventoryController, ContextInteractions<EItemInfoButton> __result)
     {
         if (!__state || saleInProgress || Plugin.InRaid() || __result == null
             || !__result.AllInteractions.Contains(EItemInfoButton.AddOffer)
             || !__result.IsActive(EItemInfoButton.AddOffer)
-            || __instance.Session?.RagFair?.Available != true || RagFairClass.IsAddOffersTemporaryDisabled()
-            || ___inventoryController_0 is not GClass3387 player
+            || __instance.Session?.RagFair?.Available != true || RagFair.IsAddOffersTemporaryDisabled()
+            || ____inventoryController is not BackEndInventoryController player
             || player.Inventory?.Stash is not { } stash
             || !InStash(itemContext.Item, stash))
         {
@@ -63,10 +66,10 @@ internal static class SaleContextMenu
             ? (russian ? "Быстро продать" : "Quick sell")
             : (russian ? $"Продать выделенное ({selected.Length})" : $"Sell selected ({selected.Length})");
         __result.method_2(SaleProtocol.Action, title, () => Sell(player, stash, selected),
-            CacheResourcesPopAbstractClass.Pop<Sprite>("Characteristics/Icons/AddOffer"));
+            Resources.Load<Sprite>("Characteristics/Icons/AddOffer"));
     }
 
-    private static void Sell(GClass3387 player, StashItemClass stash, Item[] selection)
+    private static void Sell(BackEndInventoryController player, Stash stash, Item[] selection)
     {
         if (saleInProgress || player.Inventory?.Stash != stash || Plugin.InRaid())
         {
@@ -80,18 +83,18 @@ internal static class SaleContextMenu
         }
 
         string[] selected = roots.Select(item => item.Id.ToString()).ToArray();
-        var descendants = roots.SelectMany(item => GClass3380.GetAllItems(item)).Concat(roots)
+        var descendants = roots.SelectMany(item => item.GetAllItems()).Concat(roots)
             .Select(item => item.Id.ToString()).ToHashSet();
         bool russian = IsRussian();
         saleInProgress = true;
         try
         {
-            player.IBackEndSession.SendOperationRightNow(
+            player._backendSession.SendOperationRightNow(
                 new
                 {
                     Action = SaleProtocol.Action,
                     items = selected,
-                    locale = russian ? LocaleManagerClass.RUSSIAN_LOCALIZATION : LocaleManagerClass.ENGLISH_LOCALIZATION
+                    locale = russian ? LocalizationManager.RUSSIAN_LOCALIZATION : LocalizationManager.ENGLISH_LOCALIZATION
                 },
                 result =>
                 {
@@ -99,12 +102,12 @@ internal static class SaleContextMenu
                     if (!result.Succeed)
                     {
                         Debug.LogWarning($"Stash Liquidation sale failed: {result.Error}");
-                        NotificationManagerClass.DisplayWarningNotification(
+                        NotificationManager.DisplayWarningNotification(
                             russian ? "Продажа не прошла." : "The sale failed.");
                         return;
                     }
 
-                    var remaining = GClass3380.GetAllItems(stash).Select(item => item.Id.ToString()).ToHashSet();
+                    var remaining = stash.GetAllItems().Select(item => item.Id.ToString()).ToHashSet();
                     int sold = descendants.Count(id => !remaining.Contains(id));
                     if (sold == 0)
                     {
@@ -112,7 +115,7 @@ internal static class SaleContextMenu
                             && !selected.Contains(item.Id.ToString()));
                         if (newLoose > 0)
                         {
-                            NotificationManagerClass.DisplayMessageNotification(
+                            NotificationManager.DisplayMessageNotification(
                                 russian ? $"Разобрано. Деталей оставлено в схроне: {newLoose}."
                                     : $"Gear disassembled. Parts left in stash: {newLoose}.");
                         }
@@ -124,7 +127,7 @@ internal static class SaleContextMenu
                                     : "Unpack sealed ammo boxes before selling.")
                                 : (russian ? "Продажа не состоялась. Проверь доступность предметов на барахолке, блокировку и место в схроне."
                                     : "Nothing sold. Check flea eligibility, locked items and available stash space.");
-                            NotificationManagerClass.DisplayWarningNotification(error);
+                            NotificationManager.DisplayWarningNotification(error);
                         }
                         return;
                     }
@@ -137,29 +140,29 @@ internal static class SaleContextMenu
                     {
                         message += russian ? $" Осталось в схроне: {kept}." : $" Left in stash: {kept}.";
                     }
-                    NotificationManagerClass.DisplayMessageNotification(message);
+                    NotificationManager.DisplayMessageNotification(message);
                 });
         }
         catch (Exception error)
         {
             saleInProgress = false;
             Debug.LogException(error);
-            NotificationManagerClass.DisplayWarningNotification(
+            NotificationManager.DisplayWarningNotification(
                 russian ? "Не удалось отправить запрос на продажу." : "Could not send the sale request.");
         }
     }
 
     private static bool IsRussian() =>
-        LocaleManagerClass.LocaleManagerClass.String_0 == LocaleManagerClass.RUSSIAN_LOCALIZATION;
+        LocalizationManager.Instance.Culture == LocalizationManager.RUSSIAN_LOCALIZATION;
 
-    private static bool InStash(Item item, StashItemClass stash)
+    private static bool InStash(Item item, Stash stash)
     {
         if (item.PinLockState is EItemPinLockState.Pinned or EItemPinLockState.Locked)
         {
             return false;
         }
 
-        while (item.CurrentAddress is { } address && address is not GClass3390
+        while (item.CurrentAddress is { } address && address is not OwnerItself
             && address.Container is { ParentItem: { } parent } container)
         {
             if (parent == stash)
@@ -167,7 +170,7 @@ internal static class SaleContextMenu
                 return container == stash.Grid;
             }
 
-            if (parent is AmmoBox or RandomLootContainerItemClass
+            if (parent is AmmoBox or SingleUseContainer
                 || container is Slot slot && (slot.Locked || item.IsUnremovable))
             {
                 return false;
